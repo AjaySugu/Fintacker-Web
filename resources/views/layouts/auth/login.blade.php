@@ -2,8 +2,9 @@
 <html lang="en">
 @php
     $page = 'login';
+    $common_files = 'main';
 @endphp
-@include('include.header', ['page' => $page])
+@include('include.header', ['page' => $page], ['common_files' => $common_files])
     <style>
         body {
             display: flex;
@@ -141,7 +142,7 @@ $(document).ready(function() {
     });
 
     // Verify OTP
-    $('#otpbtn').click(function() {
+    $('#verify-otpbtn').click(function() {
         let mobile = $('#mobile').val();
         let otp = '';
         $('#Otp-inputs .input').each(function() {
@@ -157,8 +158,9 @@ $(document).ready(function() {
                 _token: '{{ csrf_token() }}'
             },
             success: function(response) {
-                if (response.success) {
+                if (response.status === 200) {
                     $('#response').text("OTP Verified Successfully!");
+                    window.location.href = "/transactions"; 
                 } else {
                     saveTokenToServer("jkdfh");
                     $('#response').text("Invalid OTP. Please try again.");
@@ -177,7 +179,7 @@ document.addEventListener("message", function(event) {
     if (data.type === 'FCM_TOKEN') {
         console.log("Received Token:", data.token);
         // If user already logged in, send to backend
-        saveTokenToServer(data.token);
+        // saveTokenToServer(data.token);
     }
 });
 

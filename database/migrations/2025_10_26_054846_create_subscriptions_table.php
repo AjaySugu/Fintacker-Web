@@ -18,9 +18,12 @@ return new class extends Migration
             $table->decimal('amount', 12, 2);
             $table->unsignedBigInteger('category_id');
             $table->date('start_date');
+            $table->date('end_date');
             $table->enum('frequency', ['daily','weekly','monthly','yearly'])->default('monthly');
             $table->boolean('auto_pay')->default(false);
             $table->enum('status', ['active','paused','cancelled'])->default('active');
+            $table->date('last_paid');
+            $table->enum('paid_status',['paid','unpaid','pending'])->default('paid');
             $table->timestamps();
         });
     }

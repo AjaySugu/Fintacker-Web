@@ -31,6 +31,10 @@ class TransactionController extends Controller
     //     }
     // }
 
+    public function view() {
+        return view('layouts.app.add-txn');
+    }
+
      // 📌 List all transactions for a user
     public function index($userId)
     {

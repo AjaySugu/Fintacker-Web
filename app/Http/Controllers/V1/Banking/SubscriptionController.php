@@ -11,29 +11,55 @@ use Illuminate\Support\Facades\DB;
 
 class SubscriptionController extends Controller
 {
+
+    public function view(Request $request) 
+    {
+        $userId = 2;
+        $status = $request->status ?? 'active';
+        $subscriptions = $this->index($userId, $status);
+        // dd($subscriptions);
+        return view('layouts.app.subscriptions', compact('subscriptions'));
+    }
+
     /**
      * List all active subscriptions for a user
      */
-    public function index($userId)
+    public function index($userId, $status)
     {
-       $subscriptions = Subscription::with('category')
-        ->where('user_id', $userId)
-        ->where('status', 'active')
-        ->get()
-        ->map(function ($sub) {
-            return [
-                'name' => $sub->name,
-                'amount' => $sub->amount,
-                'category' => optional($sub->category)->name,
-                'next_payment' => $sub->nextPaymentDate()->toDateString(),
-                'reminder_message' => $sub->generateReminder(),
-            ];
-        });
+    //    $subscriptions = Subscription::with('category')
+    //     ->where('user_id', $userId)
+    //     ->where('status', $status)
+    //     ->get()
+    //     ->map(function ($sub) {
+    //         return [
+    //             'name' => $sub->name,
+    //             'amount' => $sub->amount,
+    //             'category' => optional($sub->category)->name,
+    //             'next_payment' => $sub->nextPaymentDate()->toDateString(),
+    //             'reminder_message' => $sub->generateReminder(),
+    //         ];
+    //     });
 
-        return response()->json([
-            'status' => true,
-            'data' => $subscriptions,
-        ]);
+    //     return response()->json([
+    //         'status' => true,
+    //         'data' => $subscriptions,
+    //     ]);
+
+        return Subscription::with('category')
+            ->where('user_id', $userId)
+            ->where('status', $status)
+            ->get()
+            ->map(function ($sub) {
+                return [
+                    'name' => $sub->name,
+                    'amount' => $sub->amount,
+                    'category' => optional($sub->category)->name,
+                    'category_icon' => $sub->category->icon,
+                    'next_payment' => $sub->nextPaymentDate()->toDateString(),
+                    'reminder_message' => $sub->generateReminder(),
+                ];
+            })
+            ->toArray();
     }
 
     /**

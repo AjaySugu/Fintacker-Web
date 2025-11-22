@@ -4,6 +4,7 @@ namespace App\Http\Controllers\V1\Banking;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\Budget;
 use App\Services\Banking\BudgetService;
 
 class BudgetController extends Controller
@@ -14,6 +15,26 @@ class BudgetController extends Controller
     {
         $this->budgetService = $budgetService;
     }
+
+    public function view(Request $request) {
+    
+        // $userId = auth()->id(); 
+        $userId = 2;
+        $month = $request->input('month', date('m')); // 01–12
+        $year  = $request->input('year', date('Y'));
+        $selectedMonth = $year . '-' . str_pad($month, 2, '0', STR_PAD_LEFT); // e.g. "2025-11"
+        // budgets for the selected month
+        $budgetData = $this->budgetService->getBudgetDetails($userId, $selectedMonth);
+
+        // If it's an AJAX call, return only the partial view
+        if ($request->ajax()) {
+            return view('partials.budget-content', compact('budgetData', 'month'))->render();
+        }
+
+        // Otherwise, return the full page view
+        return view('layouts.app.budgets', compact('budgetData', 'month'));
+    }
+
 
     public function getUserBudgets(Request $request)
     {
