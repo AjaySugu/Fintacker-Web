@@ -18,7 +18,7 @@ use App\Http\Controllers\V1\Banking\TransactionController;
 |
 */
 use App\Http\Controllers\FirebaseController;
-
+use App\Http\Controllers\V1\Banking\CategoryController;
 
 Route::post('/app-save-fcm-token', [FirebaseController::class, 'saveTokenApp']);
 Route::post('/send-test-notification', [FirebaseController::class, 'sendNotificationApp']);
@@ -37,4 +37,8 @@ Route::post('/send-test-notification', [FirebaseController::class, 'sendNotifica
 Route::post('/transactions', [TransactionController::class, 'store']);
 Route::get('/transactions/summary/{userId}', [TransactionController::class, 'summary']);
 Route::delete('/transactions/{id}', [TransactionController::class, 'destroy']);
+
+Route::get('/get-user-budgets', [BudgetController::class, 'getUserBudgets']);
+
+Route::post('/store-icon', [CategoryController::class, 'storeIcon']);
 

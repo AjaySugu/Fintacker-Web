@@ -36,15 +36,56 @@ class Subscription extends Model
      */
     public function nextPaymentDate()
     {
-        $date = Carbon::parse($this->start_date);
+        $today = Carbon::now();
+    $startDate = Carbon::parse($this->start_date);
+    $lastPaid = $this->last_paid ? Carbon::parse($this->last_paid) : null;
+    $endDate = $this->end_date ? Carbon::parse($this->end_date) : null;
 
-        return match ($this->frequency) {
-            'daily'   => $date->addDay(),
-            'weekly'  => $date->addWeek(),
-            'monthly' => $date->addMonth(),
-            'yearly'  => $date->addYear(),
-            default   => $date,
-        };
+    // Base date is last paid or start date if never paid
+    $baseDate = $lastPaid ?? $startDate;
+
+    $nextPayment = $baseDate->copy();
+
+    switch ($this->frequency) {
+        case 'daily':
+            $diff = $lastPaid ? $lastPaid->diffInDays($today) : 0;
+            $nextPayment = $baseDate->copy()->addDays(max($diff, 1));
+            break;
+
+        case 'weekly':
+            $diff = $lastPaid ? $lastPaid->diffInWeeks($today) : 0;
+            $nextPayment = $baseDate->copy()->addWeeks(max($diff, 1));
+            break;
+
+        case 'monthly':
+            if ($lastPaid) {
+                $diff = $lastPaid->diffInMonths($today);
+                $nextPayment = $baseDate->copy()->addMonths(max($diff, 1));
+            } else {
+                $diff = $startDate->diffInMonths($today);
+                $nextPayment = $startDate->copy()->addMonths($diff);
+            }
+            break;
+
+        case 'yearly':
+            if ($lastPaid) {
+                $diff = $lastPaid->diffInYears($today);
+                $nextPayment = $baseDate->copy()->addYears(max($diff, 1));
+            } else {
+                $diff = $startDate->diffInYears($today);
+                $nextPayment = $startDate->copy()->addYears($diff);
+            }
+            break;
+        default:
+            $nextPayment = $baseDate->copy();
+    }
+
+    // If nextPayment exceeds end_date, return null
+    if ($endDate && $nextPayment->gt($endDate)) {
+        return null;
+    }
+
+    return $nextPayment;
     }
 
     /**
@@ -54,6 +95,7 @@ class Subscription extends Model
     {
         $today = Carbon::now();
         $nextPayment = $this->nextPaymentDate();
+        // dd($nextPayment);
         $daysLeft = $today->diffInDays($nextPayment, false);
 
         $subscriptionName = $this->name ?? 'subscription';
@@ -61,7 +103,7 @@ class Subscription extends Model
         $categoryName = optional($this->category)->name ?? $this->name ?? 'subscription';
         $amount = number_format($this->amount, 2);
         // dd($daysLeft);
-        print $daysLeft;
+        // print $daysLeft;
         return match (true) {
             $daysLeft === 7 => "🕒 Heads up! Your {$categoryName} - {$subscriptionName} subscription of ₹{$amount} is due in 7 days. {$budgetImpact}",
             $daysLeft === 3 => "⏳ 3 days left! {$categoryName} - {$subscriptionName} needs ₹{$amount}. {$budgetImpact}",
