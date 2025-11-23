@@ -31,4 +31,10 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'setu' => [
+        'client_id' => env('SETU_CLIENT_ID'),
+        'client_secret' => env('SETU_CLIENT_SECRET'),
+        'x-product-instance-id' => env('SETU_PRODUCT_INSTANCE_ID')
+    ]
+
 ];

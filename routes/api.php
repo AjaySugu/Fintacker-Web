@@ -19,6 +19,7 @@ use App\Http\Controllers\V1\Banking\TransactionController;
 */
 use App\Http\Controllers\FirebaseController;
 use App\Http\Controllers\V1\Banking\CategoryController;
+use App\Http\Controllers\V1\Investments\SetuNotificationController;
 
 Route::post('/app-save-fcm-token', [FirebaseController::class, 'saveTokenApp']);
 Route::post('/send-test-notification', [FirebaseController::class, 'sendNotificationApp']);
@@ -42,3 +43,5 @@ Route::get('/get-user-budgets', [BudgetController::class, 'getUserBudgets']);
 
 Route::post('/store-icon', [CategoryController::class, 'storeIcon']);
 
+
+Route::post('/setu/notifications', [SetuNotificationController::class, 'consentCallBack']);

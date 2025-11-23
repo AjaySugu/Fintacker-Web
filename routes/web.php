@@ -8,6 +8,7 @@ use App\Http\Controllers\V1\Banking\TransactionController;
 use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\V1\Banking\BudgetController;
 use App\Http\Controllers\V1\Banking\SubscriptionController;
+use App\Http\Controllers\V1\Investments\ConsentsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,6 +26,11 @@ Route::get('/optimize-clear', function () {
     Artisan::call('optimize:clear');
     Artisan::call('migrate');
     return 'Application optimized cache cleared successfully!';
+});
+
+Route::get('Rollback', function () {
+    Artisan::call('migrate:rollback');
+    return 'Application migrate rollback successfully!';
 });
 
 // URL's
@@ -46,6 +52,15 @@ Route::prefix('budgets')->group(function () {
 Route::prefix('subscriptions')->group(function () {
     Route::get('/', [SubscriptionController::class, 'view'])->name('subscriptions.index');
 });
+
+Route::prefix('constent')->group(function () {
+    Route::get('/', [ConsentsController::class, 'index']);
+    Route::post('/setu/consent', [ConsentsController::class, 'createconsents']);
+    Route::get('/setu/consent/callback', [ConsentsController::class, 'consentCallback'])->name('setu.consent.callback');
+});
+
+
+
 
 
 Route::post('/app-save-fcm-token', [FirebaseController::class, 'saveTokenApp']);
