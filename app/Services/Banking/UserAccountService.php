@@ -2,6 +2,8 @@
 
 namespace App\Services\Banking;
 use App\Models\UserAccount;
+use Exception;
+use Illuminate\Support\Facades\DB;
 
 class UserAccountService
 {
