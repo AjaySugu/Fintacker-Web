@@ -4,18 +4,24 @@ namespace App\Services\Investments;
 
 use App\Models\SetuConsent;
 use App\Models\SetuSession;
+use App\Services\Investments\EquityIngestService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class ConsentService
 {
     protected $tokenService;
     private $instanceID;
+    protected $equityService;
+    protected $MFService;
 
-    public function __construct(TokenService $tokenService)
+    public function __construct(TokenService $tokenService, EquityIngestService $equityService, MFIngestService $MFService)
     {
         $this->tokenService = $tokenService;
         $this->instanceID = config('services.setu.x-product-instance-id');
+        $this->equityService = $equityService;
+        $this->MFService = $MFService;
     }
 
     public function createConsent(int $userId, array $consentData): array
@@ -33,8 +39,10 @@ class ConsentService
         ])->post('https://fiu-sandbox.setu.co/v2/consents', $consentData);
 
         $data = $response->json();
+
         $dataRangeFrom = now()->startOfDay();
         $dataRangeTo   = now()->addYear()->subDay()->endOfDay();
+
         if ($response->successful() && isset($data['id'])) {
             $consent = SetuConsent::create([
                 'user_id' => $userId,
@@ -52,22 +60,32 @@ class ConsentService
         return (['status' => false, 'message' => 'Failed to create consent', 'data' => $data]);
     }
 
-    public function getSessionId(string $consent_id) {
-
+    public function getSessionId(string $consent_id)
+    {
+        // Generate token
         $token = $this->tokenService->generateToken();
-        if (!$token['success']) return $token;
+        if (!$token['success']) {
+            return $token;
+        }
 
         $accessToken = $token['token']->token;
 
+        // Session date range (today)
+        $dataRangeFrom = now()->startOfDay();
+        $dataRangeTo   = now()->endOfDay();
+        
         $sessionData = [
             'consentId' => $consent_id,
+            'format'    => 'json',
             'dataRange' => [
-                'from'=> Carbon::now()->toIso8601String(),
-                'to'  => Carbon::now()->toIso8601String()
+                "from" => $dataRangeFrom->toIso8601String(),
+                "to"   => $dataRangeTo->toIso8601String()
             ],
-            'format' => 'json',
         ];
 
+        Log::info("sessionData" ,$sessionData);
+
+        // Call Setu API
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $accessToken,
             'Content-Type' => 'application/json',
@@ -75,22 +93,78 @@ class ConsentService
         ])->post('https://fiu-sandbox.setu.co/v2/sessions', $sessionData);
 
         $data = $response->json();
-            dd($data);
+
+        Log::info("sessioResponse" ,$data);
+
         if ($response->successful() && isset($data['id'])) {
+
             $session = SetuSession::create([
-                'consent_id' => $data['consentId'],
-                'session_id' => $data['id'],
-                'start_date' => Carbon::now()->toIso8601String(),
-                'end_date' => Carbon::now()->toIso8601String(),
+                'consent_id' => $consent_id,         
+                'session_id' => $data['id'],         
+                'start_date' => $dataRangeFrom->toDateTimeString(), 
+                'end_date'   => $dataRangeTo->toDateTimeString(),
             ]);
 
-            if ($session) {
-                return (['status' => true,]);
-            } else {
-                return (['message' => $session]);
-            }
+            return [
+                'status' => true,
+                'session_id' => $data['id']
+            ];
         }
-        return (['status' => false, 'message' => 'Failed to create session']);
+
+        return [
+            'status' => false,
+            'message' => $data['errorMsg'] ?? 'Failed to create session'
+        ];
+    }
+
+    public function fetchUserData(string $sessionId, int $userId)
+    {
+        // Generate token
+        $token = $this->tokenService->generateToken();
+        if (!$token['success']) {
+            Log::error("Token generation failed", ['sessionId' => $sessionId]);
+            return false;
+        }
+
+        $accessToken = $token['token']->token;
+
+        try {
+            // Call Setu API
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $accessToken,
+                'Content-Type' => 'application/json',
+                'x-product-instance-id' => $this->instanceID
+            ])->get("https://fiu-sandbox.setu.co/v2/sessions/{$sessionId}");
+
+            if (!$response->successful()) {
+                Log::error("Setu API failed", [
+                    'sessionId' => $sessionId,
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+                return false;
+            }
+
+            $data = $response->json();
+
+            // Ingest payload
+            $equityResult = $this->equityService->ingestSetuPayload($data, $userId);
+            $mfResult = $this->MFService->ingestSetuPayload($data, $userId);
+
+            Log::info("Setu data ingestion completed", [
+                'equity' => $equityResult,
+                'mutual_fund' => $mfResult
+            ]);
+
+            return true;
+
+        } catch (\Throwable $e) {
+            Log::error("Error fetching Setu user data", [
+                'sessionId' => $sessionId,
+                'message' => $e->getMessage()
+            ]);
+            return false;
+        }
     }
 
     public function fetchMfData(SetuConsent $consent): array
